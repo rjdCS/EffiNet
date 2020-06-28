@@ -3,9 +3,9 @@
 A PyTorch implementation of the 2020 paper, submitted to IEEE SIGNAL PROCESSING LETTERS.
 
 ## 1.Installation
--	Install PyTorch by selecting your environment on the website and running the appropriate command.
--	install numpy 
--	install torchstat 
+-	Install PyTorch (1.4.0).
+-	install numpy (1.17.2).
+-	install torchstat (0.0.7).
 
 ## 2.Datasets
 For our breast cancer diagnosis work , use Camelyon16 benchmark. The training data consists of 270 WSIs (160 normal and 110 tumor) with pixel-level annotations. The test data consists of 129 WSIs. 22 and 27 of them contain macro and micro tumors, respectively. 
@@ -29,9 +29,9 @@ Total params: 65,498
 
 Total memory: 13.89MB
 
-Total MAdd: 102.03MMAdd
+Total MAdd: 102.03M
 
-Total Flops: 52.56MFlops
+Total Flops: 52.56M
 
 Total MemR+W: 27.74MB
 
