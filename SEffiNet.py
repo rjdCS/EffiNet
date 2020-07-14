@@ -12,13 +12,6 @@ def _SplitChannels(channels, num_groups):
     split_channels[0] += channels - sum(split_channels)
     return split_channels
 
-# print(_SplitChannels(16, 1))   # [16]
-# print(_SplitChannels(24, 1))   # [24]
-# print(_SplitChannels(24, 3))   # [8,8,8]
-# print(_SplitChannels(40, 2))   # [20,20]
-# print(_SplitChannels(40, 3))   # [14,13,13]
-
-
 class MDConv(nn.Module):
     def __init__(self, channels, kernel_size, stride):
         super(MDConv, self).__init__()
@@ -48,28 +41,23 @@ class MDConv(nn.Module):
 
         return x
 
-# # MDConv(expand_channels, kernel_size, stride)
-# print(MDConv(24, [3,5,7], 1))
-# print(nn.Conv2d(in_channels=3, out_channels=24, kernel_size=3, stride=2, padding=1))
-
-class Effi_A(nn.Module):
+# SEffi_A
+class BlazeBlock(nn.Module):
     def __init__(self, in_channels,out_channels,kernel_size,mid_channels=None,stride=1):
-        super(Effi_A, self).__init__()
+        super(BlazeBlock, self).__init__()
         mid_channels = mid_channels or in_channels
         assert stride in [1, 2]
-        # if stride>1:
         if stride>100000:
             self.use_pool = True
         else:
             self.use_pool = False
 
-        self.branch1 = nn.Sequential(
+        self.mix_branch1 = nn.Sequential(
             MDConv(channels=in_channels, kernel_size=kernel_size, stride=stride),
             nn.BatchNorm2d(mid_channels),
             nn.Conv2d(in_channels=mid_channels,out_channels=out_channels,kernel_size=1,stride=1),
             nn.BatchNorm2d(out_channels),
         )
-
 
         if self.use_pool:
             self.shortcut = nn.Sequential(
@@ -81,15 +69,15 @@ class Effi_A(nn.Module):
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
-        branch1 = self.branch1(x)
+        branch1 = self.mix_branch1(x)
         out = (branch1+self.shortcut(x)) if self.use_pool else branch1
         return self.relu(out)
-        
 
 
-class Effi_B(nn.Module):
+# SEffi_B
+class DoubleBlazeBlock(nn.Module):
     def __init__(self,in_channels,out_channels,mid_channels=None,stride=1):
-        super(Effi_B, self).__init__()
+        super(DoubleBlazeBlock, self).__init__()
         mid_channels = mid_channels or in_channels
         assert stride in [1, 2]
         if stride > 10000:
@@ -124,6 +112,7 @@ class Effi_B(nn.Module):
         return self.hswish(out)
 
 
+# SEffiNet
 class MixBlazeNet(nn.Module):
     def __init__(self, num_classes=10):
         super(MixBlazeNet, self).__init__()
@@ -134,48 +123,33 @@ class MixBlazeNet(nn.Module):
             nn.ReLU(inplace=True),
         )
 
-        self.Effi_A = nn.Sequential(
-            Effi_A(in_channels=24, out_channels=24, kernel_size=[3,5]),
-            Effi_A(in_channels=24, out_channels=48, kernel_size=[3,5], stride=2),
+        self.blazeBlock = nn.Sequential(
+            BlazeBlock(in_channels=24, out_channels=24, kernel_size=[3,5]),
+            BlazeBlock(in_channels=24, out_channels=48, kernel_size=[3,5], stride=2),
         )
 
-        self.Effi_B = nn.Sequential(
-            Effi_B(in_channels=48, out_channels=96, mid_channels=24, stride=2),
-            Effi_B(in_channels=96, out_channels=96, mid_channels=24, stride=2),
-            Effi_B(in_channels=96, out_channels=96, mid_channels=24),
-            nn.AvgPool2d(14), 
+        self.doubleBlazeBlock = nn.Sequential(
+            DoubleBlazeBlock(in_channels=48, out_channels=96, mid_channels=24, stride=2),
+            DoubleBlazeBlock(in_channels=96, out_channels=96, mid_channels=24, stride=2),
+            DoubleBlazeBlock(in_channels=96, out_channels=96, mid_channels=24),
+            nn.AvgPool2d(14),
         )
-        self.fc = nn.Linear(96, num_classes) # 
-
-
+        self.fc = nn.Linear(96, num_classes)
 
     def forward(self, x):
         x = self.firstconv(x)
-        x = self.Effi_A(x)
-        x = self.Effi_B(x)
-        x = x.view(-1, 96) #
-        x = self.fc(x) #
+        x = self.blazeBlock(x)
+        x = self.doubleBlazeBlock(x)
+        x = x.view(-1, 96)
+        x = self.fc(x)
         return x
 
 
 def cal_model():
     from torchstat import stat
     net = MixBlazeNet(num_classes=2)
-    # print(net)
     stat(net, (3, 224, 224))
-    
-####### test()
-# def test():
-#     net = MixBlazeNet()
-#     x = torch.randn(1,3,32,32)
-#     y = net(x)
-#     print(y.size())
+
 
 if __name__ == "__main__":
     cal_model()
-    # model = MixBlazeNet(num_classes=2)
-    # print(model)
-    # test()
-
-
-
